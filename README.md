@@ -26,7 +26,7 @@ O programa principal consiste na instanciação da classe do Tracker e chamada a
 
 - Funcionalidade: Entra em loop infinito com criação de Threads para aceitar múltiplas conexões. Para cada conexão aceita, cria uma nova thread (`Tracker.handle_peer_connection`) para lidar com a comunicação com aquele peer, permitindo que o Tracker gerencie múltiplos peers simultaneamente.
 
-#### handle_peer_connection(self, conn, addr)
+#### handle_peer_connection(self, conn, addr):
 - Propósito: Gerencia as conexões de entrada de peers e as mensagens que eles enviam ao Tracker.
 
 - Funcionalidade: Recebe e desserializa a mensagem recebida. A mensagem consiste em dois tipos:
