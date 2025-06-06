@@ -4,35 +4,67 @@ Implementação de um sistema de compartilhamento cooperativo de arquivos com es
 ## Estrutura Inicial
 - `tracker.py`
 - `peers.py`
-- `serializer.py`
 
-## Trackers
-Coordena o registro e consulta de peers. Na consulta de peers, se houver menos de 5 peers, todos os peers (exceto o peer que está solicitando a listagem) são enviados.
+## Tracker
+O Tracker agora é implementado como uma aplicação web RESTful usando Flask, encapsulada na classe TrackerApp. Ele coordena o registro e a consulta de peers através de endpoints HTTP. Na consulta de peers, se houver menos de 5 peers, todos os peers (exceto o peer que está solicitando a listagem) são enviados.
 
-É composto por uma classe que contém os seguintes atributos:
-1. `self.host`: Variável de ambiente que possui o host do tracker, 127.0.0.1 de fallback.
+É composto por uma classe `TrackerApp` que contém os seguintes atributos:
 
-2. `self.port`: Variável de ambiente quecontém a porta do tracker, 9000 de fallback.
+1. `self.app`: Instância da aplicação Flask que gerencia as rotas HTTP e o servidor web para o Tracker.
 
-3. `self.connected_peers`: Dicionário de tuplas para armazenar informações sobre todos os peers atualmente registrados no Tracker. A chave consiste no ID do Peer e a tupla contém IP, porta e uma lista de blocos pertencentes do Peer. `{peer_id: (ip, port, [blocks_owned])}`
+2. `self.host`: String que contém o host em que o tracker irá escutar. O valor é obtido da variável de ambiente `TRACKER_HOST`, com 127.0.0.1 como fallback.
 
-4. `self.total_file_blocks`: Inteiro que contém o total de blocos do arquivo.
+3. `self.port`: Inteiro que contém a porta em que o tracker irá escutar. O valor é obtido da variável de ambiente `TRACKER_PORT`, com 9000 como fallback.
 
-O programa principal consiste na instanciação da classe do Tracker e chamada ao método de classe `start_tracker`.
+4. `self.total_file_blocks`: Inteiro que contém o número total de blocos do arquivo a ser compartilhado.
 
-### Métodos de Classe
-#### start_tracker(self): 
-- Propósito: Inicia o servidor do Tracker. 
+5. `self.connected_peers`: Dicionário que armazena informações sobre todos os peers atualmente registrados no Tracker. A chave é o peer_id (identificador único do peer) e o valor é um dicionário contendo o IP (`ip`), a porta de escuta (`port`) e uma lista simplificada dos blocos que o peer possui (`blocks_owned`). Exemplo: `{'peer_id': {'ip': '192.168.1.10', 'port': 50001, 'blocks_owned': [0, 5, 12]}}`.
 
-- Funcionalidade: Entra em loop infinito com criação de Threads para aceitar múltiplas conexões. Para cada conexão aceita, cria uma nova thread (`Tracker.handle_peer_connection`) para lidar com a comunicação com aquele peer, permitindo que o Tracker gerencie múltiplos peers simultaneamente.
+O programa principal consiste na instanciação da classe `TrackerApp` e na chamada ao método de instância `run()`.
 
-#### handle_peer_connection(self, conn, addr):
-- Propósito: Gerencia as conexões de entrada de peers e as mensagens que eles enviam ao Tracker.
+### Métodos da Classe TrackerApp
+#### __init__(self, host='127.0.0.1', port=9000, total_file_blocks=50)
+- **Propósito:** Construtor da classe `TrackerApp`. 
 
-- Funcionalidade: Recebe e desserializa a mensagem recebida. A mensagem consiste em dois tipos:
-1. `REGISTER`:  Se a mensagem for um registro (`REGISTER`), extrai o `peer_id` e a `listen_port`. Simula a atribuição de alguns "blocos iniciais" aleatórios para este peer. Armazena as informações do peer em `Tracker.connected_peers` (dicionário de peers atualmente registrados). Envia uma resposta de success contendo os blocos iniciais atribuídos e a lista de todos os peers atualmente conectados.
+- **Funcionalidade:** Inicializa a instância da aplicação Flask (`self.app`), define o host, a porta e o número total de blocos. Também inicializa o dicionário `self.connected_peers` e chama `_setup_routes()`.
 
-2. `GET_PEERS`: Se a mensagem for uma solicitação de lista de peers (`GET_PEERS`), filtra a lista `Tracker.connected_peers` para excluir o peer solicitante. Se houver menos de 5 peers restantes, retorna todos eles. Caso contrário, retorna um subconjunto aleatório de 5 peers. Envia uma resposta de success com a lista filtrada de peers. Lista de tuplas com os peers no seguinte formato: `[(IP PEER, PORT PEER, [LIST BLOCKS OWNED])]`.
+### _setup_routes(self)
+- **Propósito:** Configura as rotas da API REST para o Tracker.
+
+- **Funcionalidade:** Associa os métodos de manipulação de requisições (`register_peer` e `get_peers`) aos seus respectivos URLs (`/register` e `/peers`) e métodos HTTP (POST e GET) dentro da aplicação Flask.
+
+### register_peer(self) - Endpoint POST /register
+- **Propósito:** Permite que um novo peer se registre no Tracker.
+
+- **Funcionalidade:**
+
+    - Recebe uma requisição POST com um payload JSON contendo o `peer_id` e a `listen_port` do peer.
+
+    - Obtém o endereço IP do peer solicitante através de `request.remote_addr`.
+
+    - Simula a atribuição de um número aleatório de "blocos iniciais" para o peer.
+
+    - Armazena as informações do peer (IP, porta de escuta e blocos iniciais) no dicionário `self.connected_peers`.
+
+    - Retorna uma resposta JSON de sucesso, incluindo os `initial_blocks` atribuídos e uma lista dos peers atualmente conectados (excluindo o peer que acabou de se registrar).
+
+### get_peers(self) - Endpoint GET /peers
+- **Propósito:** Permite que um peer solicite uma lista de outros peers conhecidos pelo Tracker.
+
+- **Funcionalidade:**
+
+    - Recebe uma requisição GET. O `peer_id` do peer solicitante pode ser passado como um parâmetro de consulta.
+
+    - Filtra a lista `self.connected_peers` para excluir o peer solicitante.
+
+    - Se houver menos de 5 peers restantes, retorna todos eles. Caso contrário, retorna um subconjunto aleatório de 5 peers.
+
+    - Envia uma resposta JSON de sucesso com a lista filtrada de peers.
+
+### run(self)
+- **Propósito:** Inicia o servidor web Flask para o Tracker.
+
+- **Funcionalidade:** Inicia a aplicação Flask, fazendo com que o Tracker comece a escutar por requisições HTTP no host e porta configurados. Utiliza `host='0.0.0.0'` para permitir acesso de outras máquinas na rede.
 
 
 
