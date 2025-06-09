@@ -174,7 +174,7 @@ O programa principal para a simulação consiste na instanciação da classe `Pe
 
 - **Funcionalidade**: Executa `self.app.run()` em uma thread separada, permitindo que o peer receba requisições de outros peers em segundo plano.
 
-## _initialize_partial_blocks(self): ((Avaliar necessidade))
+### _initialize_partial_blocks(self): ((Avaliar necessidade))
 
 - **Propósito**: Simula a posse inicial de um subconjunto aleatório de blocos pelo peer para fins de inicialização na simulação.
 
