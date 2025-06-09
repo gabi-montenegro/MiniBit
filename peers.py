@@ -56,8 +56,6 @@ class Peer:
     def _find_available_port(self):
         """
         Encontra uma porta disponível dinamicamente para o servidor Flask do peer.
-        Em um ambiente de simulação, escolhemos uma porta aleatória na faixa definida.
-        Para um sistema de produção, seria necessário um mecanismo mais robusto.
         """
         return random.randint(PEER_LISTEN_PORT_START, PEER_LISTEN_PORT_END)
 
@@ -132,9 +130,13 @@ class Peer:
         # Uma abordagem mais segura seria o peer remoto enviar seu próprio IP e Porta junto com o sender_id.
         # Para este exemplo, vamos simplificar e procurar pelo peer_id dentro dos valores de known_peers.
         found_peer_key = None
+        # {peer_key: {'ip': str, 'port': int, 'blocks_info': list}}
         for key, info in self.known_peers.items():
             # Se o peer_id do remetente corresponder ao peer_id que temos em nossos conhecidos
             # e a porta também corresponder (para evitar colisões de ID se IPs forem diferentes)
+
+            # Se a chave eh o ID do Peer, poderia simplesmente fazer key == sender_peer_id
+            # Por outro se o serder_id for ip:port,a abordagem eh outra
             if info.get('peer_id') == sender_peer_id:
                 found_peer_key = key
                 break
@@ -256,7 +258,7 @@ class Peer:
         self.app.run(host='0.0.0.0', port=self.listen_port, debug=False, use_reloader=False) # use_reloader=False para threads
 
     def _initialize_partial_blocks(self):
-        """Cada peer inicia com um subconjunto aleatório de blocos."""
+        """Cada peer inicia com um subconjunto aleatório de blocos. ---- Mas quem determina isso é o Tracker!"""
         num_initial_blocks = random.randint(1, self.total_blocks // 4)
         initial_block_indices = random.sample(range(self.total_blocks), num_initial_blocks)
         for idx in initial_block_indices:
