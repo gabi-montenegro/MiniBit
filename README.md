@@ -5,6 +5,34 @@ Implementação de um sistema de compartilhamento cooperativo de arquivos com es
 - `tracker.py`
 - `peers.py`
 
+## Como rodar
+
+### Pré-requisitos
+1. Python (versão 3.8)
+2. Pipenv: para instalar e executar o projeto em um ambiente isolado. 
+
+### Passo a Passo
+
+1. Abra um terminal e instale as dependências do projeto.
+```
+pipenv install
+```
+
+2. Em seguida, entre no ambiente virtual.
+```
+pipenv shell
+```
+
+3. Execute o tracker.
+```
+python tracker.py
+```
+
+4. Abra outro terminal e execute os passos 1 e 2. Em seguida, execute o peer.
+```
+python peers.py
+```
+
 ## Tracker
 O Tracker agora é implementado como uma aplicação web RESTful usando Flask, encapsulada na classe TrackerApp. Ele coordena o registro e a consulta de peers através de endpoints HTTP. Na consulta de peers, se houver menos de 5 peers, todos os peers (exceto o peer que está solicitando a listagem) são enviados.
 
@@ -128,6 +156,15 @@ O programa principal para a simulação consiste na instanciação da classe `Pe
 
 - **Funcionalidade**: Associa os métodos de manipulação de requisições de entrada (`request_block_handler`, `have_blocks_info_handler`, `announce_block_handler`) aos seus respectivos URLs e métodos HTTP.
 
+### _initialize_partial_blocks(self): ((Avaliar necessidade))
+
+- **Propósito**: Simula a posse inicial de um subconjunto aleatório de blocos pelo peer para fins de inicialização na simulação.
+
+- **Funcionalidade**: Atribui aleatoriamente um número de blocos ao `self.blocks_owned` e preenche `self.block_data` com conteúdo simulado para esses blocos.
+
+### Peer como servidor
+---
+
 ### request_block_handler(self) - Endpoint POST /request_block 
 
 - **Propósito**: Manipula requisições de outros peers para obter um bloco específico.
@@ -174,11 +211,45 @@ O programa principal para a simulação consiste na instanciação da classe `Pe
 
 - **Funcionalidade**: Executa `self.app.run()` em uma thread separada, permitindo que o peer receba requisições de outros peers em segundo plano.
 
-### _initialize_partial_blocks(self): ((Avaliar necessidade))
+### Peer como cliente
+---
 
-- **Propósito**: Simula a posse inicial de um subconjunto aleatório de blocos pelo peer para fins de inicialização na simulação.
+### request_block(self, target_peer_key, block_idx)
 
-- **Funcionalidade**: Atribui aleatoriamente um número de blocos ao `self.blocks_owned` e preenche `self.block_data` com conteúdo simulado para esses blocos.
+- **Propósito**: Solicita um bloco específico de um peer alvo.
+
+- **Funcionalidade**: Faz uma requisição POST para o endpoint `/request_block` do peer alvo. Se a resposta for bem-sucedida, o bloco é adicionado aos `self.blocks_owned` e `self.block_data` do peer solicitante, e esse anuncia a posse do novo bloco aos seus conhecidos.
+
+### announce_block_to_peers(self, block_idx)
+
+- **Propósito**: Anuncia aos peers conhecidos que este peer adquiriu um novo bloco.
+
+- **Funcionalidade**: Envia uma requisição POST para o endpoint `/announce_block` de cada peer conhecido, informando o índice do bloco recém-adquirido.
+
+### send_blocks_info_to_peer(self, target_peer_key)
+
+- **Propósito**: Envia a lista completa de blocos que este peer possui para um peer alvo.
+
+- **Funcionalidade**: Faz uma requisição POST para o endpoint `/have_blocks_info` do peer alvo, enviando a lista `self.blocks_owned`.
+
+### Inicializador do Peer e Recontrução do arquivo
+---
+
+### run(self)
+
+
+### reconstruct_file(self)
+
+
+### Algoritmos distribuídos
+---
+
+### get_rarest_blocks(self)
+
+
+
+### tit_for_tat_strategy(self)
+
 
 
 
