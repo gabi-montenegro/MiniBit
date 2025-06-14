@@ -112,9 +112,11 @@ class TrackerSocketServer:
         requesting_peer_id = data.get("peer_id")
 
         filtered_peers = [
-            peer for pid, peer in self.connected_peers.items()
+            {"peer_id": pid, **peer}
+            for pid, peer in self.connected_peers.items()
             if pid != requesting_peer_id
         ]
+
 
         if len(filtered_peers) <= 5:
             selected_peers = filtered_peers

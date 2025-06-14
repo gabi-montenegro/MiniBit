@@ -44,7 +44,7 @@ class PeerSocket:
                 self.handle_block_request(conn, msg)
             elif action == "have_blocks_info":
                 self.peer_blocks[sender] = msg['blocks_info']
-                print(f"{Fore.CYAN}[{self.peer_id}] Received blocks info from {sender}: {msg['blocks_info']}{Style.RESET_ALL}")
+                # print(f"{Fore.CYAN}[{self.peer_id}] Received blocks info from {sender}: {msg['blocks_info']}{Style.RESET_ALL}")
             elif action == "announce_block":
                 if sender in self.peer_blocks and 0 <= msg['block_index'] < TOTAL_FILE_BLOCKS:
                     self.peer_blocks[sender][msg['block_index']] = True
@@ -215,7 +215,7 @@ class PeerSocket:
         last_unchoke_time = 0
 
         while not all(self.blocks_owned):
-            print(f"{Fore.MAGENTA}[{self.peer_id}] Current blocks: {self.blocks_owned}{Style.RESET_ALL}")
+            # print(f"{Fore.MAGENTA}[{self.peer_id}] Current blocks: {self.blocks_owned}{Style.RESET_ALL}")
 
             self.update_peers_from_tracker()
             self.send_blocks_info()
