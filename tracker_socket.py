@@ -56,14 +56,16 @@ class TrackerSocketServer:
                 request = json.loads(data.decode())
                 action = request.get("action")
 
-                print("[TRACKER] Requisição recebida:", action)
-
                 if action == "register":
                     response = self.register_peer(request, addr)
                 elif action == "get_peers":
                     response = self.get_peers(request)
                 elif action == "request_block":
                     response = self.handle_block_request(request)
+                elif action == "have_blocks_info":
+                    response = self.receive_have_blocks_info(request)
+                elif action == "announce_block":
+                    response = self.receive_announce_block(request)
                 else:
                     response = {"status": "error", "message": "Ação desconhecida"}
                     print(f"{Fore.RED}[TRACKER] Ação desconhecida recebida de {addr}{Style.RESET_ALL}")
@@ -95,7 +97,8 @@ class TrackerSocketServer:
 
         # Envia lista de outros peers (excluindo o próprio peer)
         response_peers = [
-            peer for pid, peer in self.connected_peers.items()
+            {"peer_id": pid, **peer}
+            for pid, peer in self.connected_peers.items()
             if pid != peer_id
         ]
 
@@ -120,9 +123,10 @@ class TrackerSocketServer:
 
         # Inclui o Tracker como peer (ele mesmo)
         tracker_peer_info = {
+            'peer_id': 'tracker',
             'ip': self.host,
             'port': self.port,
-            'blocks_owned': list(range(TOTAL_FILE_BLOCKS))  # O Tracker tem todos os blocos
+            'blocks_owned': list(range(TOTAL_FILE_BLOCKS))
         }
 
         # Tracker entra por último na lista
@@ -156,6 +160,31 @@ class TrackerSocketServer:
                 "status": "error",
                 "reason": "Bloco não disponível no tracker"
             }
+
+    def receive_have_blocks_info(self, data):
+        peer_id = data.get("sender_id")
+        blocks_owned = data.get("blocks_owned", [])
+
+        if peer_id in self.connected_peers:
+            self.connected_peers[peer_id]['blocks_owned'] = blocks_owned
+            return {"status": "success"}
+        else:
+            print(f"{Fore.RED}[TRACKER] Peer {peer_id} não registrado tentou enviar have_blocks_info.{Style.RESET_ALL}")
+            return {"status": "error", "message": "Peer não registrado"}
+
+    def receive_announce_block(self, data):
+        peer_id = data.get("sender_id")
+        block_idx = data.get("block_index")
+
+        if peer_id in self.connected_peers and block_idx is not None:
+            if block_idx not in self.connected_peers[peer_id]['blocks_owned']:
+                self.connected_peers[peer_id]['blocks_owned'].append(block_idx)
+                print(f"{Fore.YELLOW}[TRACKER] Peer {peer_id} anunciou novo bloco {block_idx}{Style.RESET_ALL}")
+            return {"status": "success"}
+        else:
+            print(f"{Fore.RED}[TRACKER] Erro ao processar announce_block de {peer_id}{Style.RESET_ALL}")
+            return {"status": "error", "message": "Erro no announce_block"}
+
 
 if __name__ == "__main__":
     tracker = TrackerSocketServer()
