@@ -5,6 +5,7 @@ import time
 import threading
 import requests
 from flask import Flask, request, jsonify
+import sys
 
 # Configuração para o Tracker e portas dos Peers
 TRACKER_HOST = os.getenv("TRACKER_HOST", '127.0.0.1')
@@ -465,25 +466,11 @@ class Peer:
 if __name__ == "__main__":
     TOTAL_FILE_BLOCKS = 20  # Número total de blocos do arquivo
 
+    if len(sys.argv) < 2:
+        print("Uso: python peers.py <peer_id>")
+        sys.exit(1)
+    
+    peer_id_arg = sys.argv[1] # Pega o primeiro argumento como peer_id
 
-    # Peer 1
-    peer1 = Peer(peer_id="peer_A", total_blocks=TOTAL_FILE_BLOCKS)
-    peer1_thread = threading.Thread(target=peer1.run)
-    peer1_thread.start()
-
-    # Peer 2
-    peer2 = Peer(peer_id="peer_B", total_blocks=TOTAL_FILE_BLOCKS)
-    peer2_thread = threading.Thread(target=peer2.run)
-    peer2_thread.start()
-
-    # Peer 3
-    peer3 = Peer(peer_id="peer_C", total_blocks=TOTAL_FILE_BLOCKS)
-    peer3_thread = threading.Thread(target=peer3.run)
-    peer3_thread.start()
-
-    # Mantém a thread principal viva para permitir que as threads dos peers sejam executadas
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nSimulação interrompida pelo usuário.")
+    peer = Peer(peer_id=peer_id_arg, total_blocks=TOTAL_FILE_BLOCKS)
+    peer.run()

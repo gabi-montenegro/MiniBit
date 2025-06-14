@@ -20,7 +20,7 @@ class TrackerApp:
         self.app = Flask(__name__)
         self.host = os.getenv("TRACKER_HOST", host)
         self.port = int(os.getenv("TRACKER_PORT", port))
-        self.total_file_blocks = total_file_blocks
+        self.total_file_blocks = 20
 
         # {peer_id: {'ip': str, 'port': int, 'blocks_owned': list}}
         self.connected_peers = {}
