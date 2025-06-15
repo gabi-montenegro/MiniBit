@@ -3,10 +3,12 @@ import threading
 import json
 import random
 from colorama import Fore, Style, init
+import math
 
 init(autoreset=True)
 
-TOTAL_FILE_BLOCKS = 50
+TOTAL_FILE_BLOCKS = 0
+BLOCK_SIZE_BYTES = 256 * 1024 # 256 KB
 
 class TrackerSocketServer:
     def __init__(self, host='127.0.0.1', port=9000):
@@ -24,15 +26,36 @@ class TrackerSocketServer:
         try:
             with open(filename, 'rb') as f:
                 data = f.read()
-            block_size = max(1, len(data) // TOTAL_FILE_BLOCKS)
+            
+            file_size_bytes = len(data)
+            if file_size_bytes == 0:
+                print(f"{Fore.YELLOW}[TRACKER] Arquivo '{filename}' está vazio.{Style.RESET_ALL}")
+                self.block_data = {}
+                self.blocks_owned = {}
+                return
 
+            # 1. Calcula o número total de blocos necessários.
+            # Usa math.ceil para garantir que o último pedaço, mesmo que menor, seja contado.
+            global TOTAL_FILE_BLOCKS 
+            TOTAL_FILE_BLOCKS = math.ceil(file_size_bytes / BLOCK_SIZE_BYTES)
+
+            # Limpa os dicionários para o novo arquivo
+            self.block_data = {}
+            self.blocks_owned = [False] * TOTAL_FILE_BLOCKS
+
+            # 2. Itera pelo número calculado de blocos
             for i in range(TOTAL_FILE_BLOCKS):
-                start = i * block_size
-                end = start + block_size if i < TOTAL_FILE_BLOCKS - 1 else len(data)
-                self.block_data[i] = data[start:end].decode('utf-8', errors='ignore')
+                start = i * BLOCK_SIZE_BYTES
+                # O final do bloco é o início + tamanho, ou o final do arquivo (o que vier primeiro)
+                end = min(start + BLOCK_SIZE_BYTES, file_size_bytes)
+                
+                self.block_data[i] = data[start:end]
                 self.blocks_owned[i] = True
-            print(f"{Fore.GREEN}[TRACKER] Arquivo '{filename}' carregado em {TOTAL_FILE_BLOCKS} blocos.{Style.RESET_ALL}")
+                
+            print(f"{Fore.GREEN}[TRACKER] Arquivo '{filename}' ({file_size_bytes} bytes) carregado em {TOTAL_FILE_BLOCKS} blocos de até {BLOCK_SIZE_BYTES // 1024} KB.{Style.RESET_ALL}")
 
+        except FileNotFoundError:
+            print(f"{Fore.RED}[TRACKER] Erro: Arquivo '{filename}' não encontrado.{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.RED}[TRACKER] Erro ao carregar arquivo: {e}{Style.RESET_ALL}")
 
