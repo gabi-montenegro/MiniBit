@@ -1,6 +1,7 @@
 import socket
 import json
 from colorama import Fore, Style
+import base64
 
 def notify_tracker_peer_offline(peer, dead_peer_id):
     try:
@@ -59,7 +60,7 @@ def request_block_from_peer(peer, target_pid, block_idx):
 
             if resp["status"] == "success":
                 peer.blocks_owned[block_idx] = True
-                peer.block_data[block_idx] = resp["block_data"]
+                peer.block_data[block_idx] = base64.b64decode(resp["block_data"].encode('ascii'))
                 print(f"{Fore.GREEN}[{peer.peer_id}] Received block {block_idx} from {target_pid}{Style.RESET_ALL}")
                 announce_block(peer, block_idx)
             else:
@@ -77,14 +78,21 @@ def request_block_from_tracker(peer, block_idx):
                 "block_index": block_idx
             }
             s.sendall(json.dumps(msg).encode())
-            data = s.recv(4096)
+            chunks = []
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            data = b''.join(chunks)
             resp = json.loads(data.decode())
+
 
             if resp["status"] == "success":
                 peer.blocks_owned[block_idx] = True
-                peer.block_data[block_idx] = resp["block_data"]
+                peer.block_data[block_idx] = base64.b64decode(resp["block_data"].encode('ascii'))
                 print(f"{Fore.GREEN}[{peer.peer_id}] Received block {block_idx} from TRACKER{Style.RESET_ALL}")
-                announce_block(block_idx)
+                # announce_block(peer, block_idx)
             else:
                 print(f"{Fore.RED}[{peer.peer_id}] Failed to get block {block_idx} from TRACKER: {resp.get('reason')}{Style.RESET_ALL}")
 
@@ -137,14 +145,14 @@ def update_peers_from_tracker(peer):
             data = s.recv(4096)
             resp = json.loads(data.decode())
 
-            for peer in resp['peers']:
-                pid = peer['peer_id']
+            for _peer in resp['peers']:
+                pid = _peer['peer_id']
                 if pid == peer.peer_id:
                     continue
                 if pid not in peer.known_peers:
-                    peer.known_peers[pid] = (peer['ip'], peer['port'])
-                    blocks_list = peer.get('blocks_owned', [])
-                    blocks_bool = [i in blocks_list for i in range(TOTAL_FILE_BLOCKS)]
+                    peer.known_peers[pid] = (_peer['ip'], _peer['port'])
+                    blocks_list = _peer.get('blocks_owned', [])
+                    blocks_bool = [i in blocks_list for i in range(peer.TOTAL_FILE_BLOCKS)]
                     peer.peer_blocks[pid] = blocks_bool
                     print(f"{Fore.CYAN}[{peer.peer_id}] Discovered peer {pid}{Style.RESET_ALL}")
     except Exception as e:

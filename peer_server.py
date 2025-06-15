@@ -16,6 +16,17 @@ def handle_block_request(peer, conn, msg):
             response = {"status": "error", "reason": "Choked or block unavailable"}
             print(f"{Fore.RED}[{peer.peer_id}] Denied block {block_idx} request from {sender_id} (choked or unavailable){Style.RESET_ALL}")
         conn.sendall(json.dumps(response).encode())
+
+
+def handle_have_blocks_info_request(peer, conn, msg):
+        sender_id = msg.get("sender_id")
+        response = {
+            "status": "success",
+            "peer_id": peer.peer_id,
+            "blocks_info": peer.blocks_owned
+        }
+        print(f"{Fore.CYAN}[{peer.peer_id}] Sending own blocks info to {sender_id}{Style.RESET_ALL}")
+        conn.sendall(json.dumps(response).encode())
         
 def handle_peer_request(peer, conn, addr):
     with conn:
@@ -27,9 +38,11 @@ def handle_peer_request(peer, conn, addr):
         sender = msg.get("sender_id")
 
         if action == "request_block":
-            peer.handle_block_request(conn, msg)
+            handle_block_request(peer,conn, msg)
         elif action == "have_blocks_info":
             peer.peer_blocks[sender] = msg['blocks_info']
+        elif action == "have_blocks_info":
+            handle_have_blocks_info_request(peer, conn, msg)
         elif action == "announce_block":
             if sender in peer.peer_blocks and 0 <= msg['block_index'] < peer.TOTAL_FILE_BLOCKS:
                 peer.peer_blocks[sender][msg['block_index']] = True

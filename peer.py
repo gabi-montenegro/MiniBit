@@ -36,7 +36,7 @@ class Peer:
 
         while not all(self.blocks_owned):
             print(f"{Fore.MAGENTA}[{self.peer_id}] Blocos atuais: {self.blocks_owned}{Style.RESET_ALL}")
-
+            print(self.peer_id)
             update_peers_from_tracker(self)
             send_blocks_info(self)
 
@@ -85,7 +85,7 @@ class Peer:
 
     def reconstruct_file(self):
         output_file = f"output_{self.peer_id}.txt"
-        with open(output_file, 'w') as f:
+        with open(output_file, 'wb') as f:
             for i in range(TOTAL_FILE_BLOCKS):
                 content = self.block_data.get(i, f"[MISSING BLOCK {i}]")
                 f.write(content)

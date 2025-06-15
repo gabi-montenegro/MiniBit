@@ -4,11 +4,12 @@ import json
 import random
 from colorama import Fore, Style, init
 import math
+import base64
 
 init(autoreset=True)
 
-TOTAL_FILE_BLOCKS = 0
-BLOCK_SIZE_BYTES = 256 * 1024 # 256 KB
+TOTAL_FILE_BLOCKS = 50
+BLOCK_SIZE_BYTES = 4 * 1024 # 256 KB
 
 class TrackerSocketServer:
     def __init__(self, host='127.0.0.1', port=9000):
@@ -85,10 +86,10 @@ class TrackerSocketServer:
                     response = self.get_peers(request)
                 elif action == "request_block":
                     response = self.handle_block_request(request)
-                elif action == "have_blocks_info":
-                    response = self.receive_have_blocks_info(request)
-                elif action == "announce_block":
-                    response = self.receive_announce_block(request)
+                # elif action == "have_blocks_info":
+                #     response = self.receive_have_blocks_info(request)
+                # elif action == "announce_block":
+                #     response = self.receive_announce_block(request)
                 elif action == "peer_offline":
                     response = self.handle_peer_offline(request)
                 else:
@@ -114,8 +115,7 @@ class TrackerSocketServer:
 
         self.connected_peers[peer_id] = {
             'ip': addr[0],
-            'port': listen_port,
-            'blocks_owned': initial_blocks
+            'port': listen_port
         }
 
         print(f"{Fore.GREEN}[TRACKER] Peer {peer_id} registrado de {addr[0]}:{listen_port} com blocos {initial_blocks}{Style.RESET_ALL}")
@@ -136,13 +136,6 @@ class TrackerSocketServer:
     def get_peers(self, data):
         requesting_peer_id = data.get("peer_id")
 
-        # Inclui o Tracker como peer (ele mesmo)
-        tracker_peer_info = {
-            'peer_id': 'tracker',
-            'ip': self.host,
-            'port': self.port,
-            'blocks_owned': list(range(TOTAL_FILE_BLOCKS))
-        }
 
         # Primeiro monta a lista de peers, incluindo o tracker
         filtered_peers = [
@@ -151,8 +144,6 @@ class TrackerSocketServer:
             if pid != requesting_peer_id
         ]
 
-        # Adiciona o tracker à lista de peers
-        filtered_peers.append(tracker_peer_info)
 
         # Agora faz a seleção: se tem menos de 5, devolve todos; senão, sorteia
         if len(filtered_peers) <= 5:
@@ -181,7 +172,7 @@ class TrackerSocketServer:
             return {
                 "status": "success",
                 "block_index": block_idx,
-                "block_data": self.block_data[block_idx]
+                "block_data": base64.b64encode(self.block_data[block_idx]).decode('ascii')
             }
         else:
             print(f"{Fore.RED}[TRACKER] Não possui bloco {block_idx} solicitado por {sender_id}{Style.RESET_ALL}")
@@ -190,29 +181,29 @@ class TrackerSocketServer:
                 "reason": "Bloco não disponível no tracker"
             }
 
-    def receive_have_blocks_info(self, data):
-        peer_id = data.get("sender_id")
-        blocks_owned = data.get("blocks_owned", [])
+    # def receive_have_blocks_info(self, data):
+    #     peer_id = data.get("sender_id")
+    #     blocks_owned = data.get("blocks_owned", [])
 
-        if peer_id in self.connected_peers:
-            self.connected_peers[peer_id]['blocks_owned'] = blocks_owned
-            return {"status": "success"}
-        else:
-            print(f"{Fore.RED}[TRACKER] Peer {peer_id} não registrado tentou enviar have_blocks_info.{Style.RESET_ALL}")
-            return {"status": "error", "message": "Peer não registrado"}
+    #     if peer_id in self.connected_peers:
+    #         self.connected_peers[peer_id]['blocks_owned'] = blocks_owned
+    #         return {"status": "success"}
+    #     else:
+    #         print(f"{Fore.RED}[TRACKER] Peer {peer_id} não registrado tentou enviar have_blocks_info.{Style.RESET_ALL}")
+    #         return {"status": "error", "message": "Peer não registrado"}
 
-    def receive_announce_block(self, data):
-        peer_id = data.get("sender_id")
-        block_idx = data.get("block_index")
+    # def receive_announce_block(self, data):
+    #     peer_id = data.get("sender_id")
+    #     block_idx = data.get("block_index")
 
-        if peer_id in self.connected_peers and block_idx is not None:
-            if block_idx not in self.connected_peers[peer_id]['blocks_owned']:
-                self.connected_peers[peer_id]['blocks_owned'].append(block_idx)
-                print(f"{Fore.YELLOW}[TRACKER] Peer {peer_id} anunciou novo bloco {block_idx}{Style.RESET_ALL}")
-            return {"status": "success"}
-        else:
-            print(f"{Fore.RED}[TRACKER] Erro ao processar announce_block de {peer_id}{Style.RESET_ALL}")
-            return {"status": "error", "message": "Erro no announce_block"}
+    #     if peer_id in self.connected_peers and block_idx is not None:
+    #         if block_idx not in self.connected_peers[peer_id]['blocks_owned']:
+    #             self.connected_peers[peer_id]['blocks_owned'].append(block_idx)
+    #             print(f"{Fore.YELLOW}[TRACKER] Peer {peer_id} anunciou novo bloco {block_idx}{Style.RESET_ALL}")
+    #         return {"status": "success"}
+    #     else:
+    #         print(f"{Fore.RED}[TRACKER] Erro ao processar announce_block de {peer_id}{Style.RESET_ALL}")
+    #         return {"status": "error", "message": "Erro no announce_block"}
 
     def handle_peer_offline(self, data):
         dead_peer_id = data.get("dead_peer_id")
