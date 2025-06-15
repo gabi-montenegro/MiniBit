@@ -124,7 +124,9 @@ class PeerSocket:
         rarity_count = {}
         rarest_blocks = self.get_rarest_blocks()
 
-        for pid in self.peer_blocks:
+        peers_considered = [pid for pid in self.peer_blocks if pid != 'tracker']
+
+        for pid in peers_considered:
             count = sum(1 for block_idx in rarest_blocks if self.peer_blocks[pid][block_idx])
             rarity_count[pid] = count
 
@@ -132,12 +134,21 @@ class PeerSocket:
         fixed_peers = set(pid for pid, count in sorted_peers if count > 0)
         fixed_peers = set(list(fixed_peers)[:4])
 
-        candidates = [pid for pid in self.peer_blocks if pid not in fixed_peers]
-        optimistic_peer = {random.choice(candidates)} if candidates else set()
+        print(f"{Fore.CYAN}[{self.peer_id}] Top peers (fixos) por blocos raros: {sorted_peers}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}[{self.peer_id}] Fixos selecionados: {fixed_peers}{Style.RESET_ALL}")
+
+        candidates = [pid for pid in peers_considered if pid not in fixed_peers]
+        optimistic_peer = set()
+
+        if candidates:
+            optimistic_peer = {random.choice(candidates)}
+            print(f"{Fore.MAGENTA}[{self.peer_id}] Peer otimista escolhido: {optimistic_peer}{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.MAGENTA}[{self.peer_id}] Sem candidatos para otimista.{Style.RESET_ALL}")
 
         self.unchoked_peers = fixed_peers.union(optimistic_peer)
 
-        self.unchoked_peers.discard("tracker")
+        # self.unchoked_peers.discard("tracker")
 
         print(f"{Fore.YELLOW}[{self.peer_id}] Unchoked peers: {self.unchoked_peers}{Style.RESET_ALL}")
 
