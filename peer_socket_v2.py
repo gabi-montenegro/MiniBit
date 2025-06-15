@@ -272,7 +272,6 @@ class PeerSocket:
                 last_unchoke_time = now
 
             rarest_blocks = self.get_rarest_blocks()
-            print(f"{Fore.YELLOW}[{self.peer_id}] Rarest blocks to download: {rarest_blocks}{Style.RESET_ALL}")
 
             block_downloaded = False
 
