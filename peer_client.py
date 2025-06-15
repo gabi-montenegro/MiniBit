@@ -122,7 +122,7 @@ def register_with_tracker(peer):
         for peer in resp['peers']:
             pid = peer['peer_id']
             peer.known_peers[pid] = (peer['ip'], peer['port'])
-            peer.peer_blocks[pid] = [False] * TOTAL_FILE_BLOCKS
+            peer.peer_blocks[pid] = [False] * peer.TOTAL_FILE_BLOCKS
 
 def send_blocks_info(peer):
     for pid, (ip, port) in list(peer.known_peers.items()):
