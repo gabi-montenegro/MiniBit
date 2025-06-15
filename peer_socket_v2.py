@@ -135,17 +135,21 @@ class PeerSocket:
 
     def get_rarest_blocks(self):
         rarity = {}
+
         for idx in range(TOTAL_FILE_BLOCKS):
             if not self.blocks_owned[idx]:
-                count = sum(1 for blocks in self.peer_blocks.values() if idx < len(blocks) and blocks[idx])
-                if count > 0:
-                    rarity[idx] = count
+                # Conta quantos peers têm esse bloco
+                count = sum(
+                    1 for blocks in self.peer_blocks.values()
+                    if idx < len(blocks) and blocks[idx]
+                )
 
-        for idx in range(TOTAL_FILE_BLOCKS):
-            if not self.blocks_owned[idx] and idx not in rarity:
-                rarity[idx] = 9999
+                # Se ninguém tem, usa um valor alto (9999)
+                rarity[idx] = count if count > 0 else 9999
 
+        # Retorna os blocos ordenados do mais raro para o mais comum
         return sorted(rarity, key=lambda k: rarity[k])
+
 
     def tit_for_tat(self):
         rarity_count = {}
