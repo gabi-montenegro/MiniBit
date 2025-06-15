@@ -90,7 +90,7 @@ class PeerSocket:
                 self.peer_blocks[pid] = [False] * TOTAL_FILE_BLOCKS
 
     def send_blocks_info(self):
-        for pid, (ip, port) in self.known_peers.items():
+        for pid, (ip, port) in list(self.known_peers.items()):
             msg = {
                 "action": "have_blocks_info",
                 "sender_id": self.peer_id,
@@ -98,13 +98,40 @@ class PeerSocket:
             }
             self.send_message(ip, port, msg)
 
+    def notify_tracker_peer_offline(self, dead_peer_id):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((TRACKER_HOST, TRACKER_PORT))
+                msg = {
+                    "action": "peer_offline",
+                    "dead_peer_id": dead_peer_id,
+                    "sender_id": self.peer_id
+                }
+                s.sendall(json.dumps(msg).encode())
+        except:
+            print(f"[{self.peer_id}] Falha ao notificar o tracker sobre o peer morto: {dead_peer_id}")
+
+
+    def get_peer_id_by_address(self, ip, port):
+        for pid, (peer_ip, peer_port) in self.known_peers.items():
+            if peer_ip == ip and peer_port == port:
+                return pid
+        return None
+
     def send_message(self, ip, port, msg):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((ip, port))
                 s.sendall(json.dumps(msg).encode())
-        except Exception as e:
-            print(f"{Fore.RED}[{self.peer_id}] Error sending to {ip}:{port} - {e}{Style.RESET_ALL}")
+        except ConnectionRefusedError as e:
+            target_peer_id = self.get_peer_id_by_address(ip, port)
+            if target_peer_id:
+                print(f"[{self.peer_id}] Não foi possível conectar ao peer {target_peer_id} ({ip}:{port}). Removendo da lista.")
+                self.peer_blocks.pop(target_peer_id, None)
+                self.known_peers.pop(target_peer_id, None)
+                self.notify_tracker_peer_offline(target_peer_id)
+            else:
+                print(f"[{self.peer_id}] Não foi possível conectar ao peer desconhecido ({ip}:{port}). Sem ação.")
 
     def get_rarest_blocks(self):
         rarity = {}

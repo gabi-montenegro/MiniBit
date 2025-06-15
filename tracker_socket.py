@@ -66,6 +66,8 @@ class TrackerSocketServer:
                     response = self.receive_have_blocks_info(request)
                 elif action == "announce_block":
                     response = self.receive_announce_block(request)
+                elif action == "peer_offline":
+                    response = self.handle_peer_offline(request)
                 else:
                     response = {"status": "error", "message": "Ação desconhecida"}
                     print(f"{Fore.RED}[TRACKER] Ação desconhecida recebida de {addr}{Style.RESET_ALL}")
@@ -135,7 +137,7 @@ class TrackerSocketServer:
         else:
             selected_peers = random.sample(filtered_peers, k=5)
 
-        print(f"{Fore.CYAN}[TRACKER] Peer {requesting_peer_id} solicitou lista de peers. Enviando {len(selected_peers)} peers (incluindo o Tracker se selecionado).{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}[TRACKER] Peer {requesting_peer_id} solicitou lista de peers.{Style.RESET_ALL}")
 
         return {
             "status": "success",
@@ -188,6 +190,16 @@ class TrackerSocketServer:
         else:
             print(f"{Fore.RED}[TRACKER] Erro ao processar announce_block de {peer_id}{Style.RESET_ALL}")
             return {"status": "error", "message": "Erro no announce_block"}
+
+    def handle_peer_offline(self, data):
+        dead_peer_id = data.get("dead_peer_id")
+        if dead_peer_id and dead_peer_id in self.connected_peers:
+            self.connected_peers.pop(dead_peer_id)
+            print(f"[TRACKER] Peer {dead_peer_id} removido da lista (offline informado por {data.get('sender_id')})")
+            return {"status": "success"}
+        else:
+            return {"status": "error", "message": "Peer desconhecido ou inválido"}
+
 
 
 if __name__ == "__main__":
