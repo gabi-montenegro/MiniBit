@@ -111,18 +111,6 @@ class TrackerSocketServer:
     def get_peers(self, data):
         requesting_peer_id = data.get("peer_id")
 
-        filtered_peers = [
-            {"peer_id": pid, **peer}
-            for pid, peer in self.connected_peers.items()
-            if pid != requesting_peer_id
-        ]
-
-
-        if len(filtered_peers) <= 5:
-            selected_peers = filtered_peers
-        else:
-            selected_peers = random.sample(filtered_peers, k=5)
-
         # Inclui o Tracker como peer (ele mesmo)
         tracker_peer_info = {
             'peer_id': 'tracker',
@@ -131,15 +119,29 @@ class TrackerSocketServer:
             'blocks_owned': list(range(TOTAL_FILE_BLOCKS))
         }
 
-        # Tracker entra por último na lista
-        selected_peers.append(tracker_peer_info)
+        # Primeiro monta a lista de peers, incluindo o tracker
+        filtered_peers = [
+            {"peer_id": pid, **peer}
+            for pid, peer in self.connected_peers.items()
+            if pid != requesting_peer_id
+        ]
 
-        print(f"{Fore.CYAN}[TRACKER] Peer {requesting_peer_id} solicitou lista de peers. Enviando {len(selected_peers)} peers (incluindo o Tracker).{Style.RESET_ALL}")
+        # Adiciona o tracker à lista de peers
+        filtered_peers.append(tracker_peer_info)
+
+        # Agora faz a seleção: se tem menos de 5, devolve todos; senão, sorteia
+        if len(filtered_peers) <= 5:
+            selected_peers = filtered_peers
+        else:
+            selected_peers = random.sample(filtered_peers, k=5)
+
+        print(f"{Fore.CYAN}[TRACKER] Peer {requesting_peer_id} solicitou lista de peers. Enviando {len(selected_peers)} peers (incluindo o Tracker se selecionado).{Style.RESET_ALL}")
 
         return {
             "status": "success",
             "peers": selected_peers
         }
+
 
 
     def handle_block_request(self, data):

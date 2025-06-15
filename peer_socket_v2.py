@@ -137,6 +137,8 @@ class PeerSocket:
 
         self.unchoked_peers = fixed_peers.union(optimistic_peer)
 
+        self.unchoked_peers.discard("tracker")
+
         print(f"{Fore.YELLOW}[{self.peer_id}] Unchoked peers: {self.unchoked_peers}{Style.RESET_ALL}")
 
     def request_block_from_peer(self, target_pid, block_idx):
@@ -165,6 +167,7 @@ class PeerSocket:
                     print(f"{Fore.RED}[{self.peer_id}] Failed to get block {block_idx} from {target_pid}: {resp.get('reason')}{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.RED}[{self.peer_id}] Connection error to {target_pid}: {e}{Style.RESET_ALL}")
+
 
     def announce_block(self, block_idx):
         for pid, (ip, port) in self.known_peers.items():
@@ -198,7 +201,12 @@ class PeerSocket:
 
                 for peer in resp['peers']:
                     pid = peer['peer_id']
-                    if pid != self.peer_id and pid not in self.known_peers:
+
+                    # Ignore o próprio peer e o tracker
+                    if pid == self.peer_id:
+                        continue
+
+                    if pid not in self.known_peers:
                         self.known_peers[pid] = (peer['ip'], peer['port'])
 
 
@@ -215,7 +223,7 @@ class PeerSocket:
         last_unchoke_time = 0
 
         while not all(self.blocks_owned):
-            # print(f"{Fore.MAGENTA}[{self.peer_id}] Current blocks: {self.blocks_owned}{Style.RESET_ALL}")
+            print(f"{Fore.MAGENTA}[{self.peer_id}] Blocos atuais: {self.blocks_owned}{Style.RESET_ALL}")
 
             self.update_peers_from_tracker()
             self.send_blocks_info()
@@ -226,22 +234,43 @@ class PeerSocket:
                 last_unchoke_time = now
 
             rarest_blocks = self.get_rarest_blocks()
+            print(f"{Fore.YELLOW}[{self.peer_id}] Rarest blocks to download: {rarest_blocks}{Style.RESET_ALL}")
+
             block_downloaded = False
 
+            # Tenta pegar de outros peers primeiro
             for block_idx in rarest_blocks:
                 for pid in self.unchoked_peers:
                     if pid in self.peer_blocks and self.peer_blocks[pid][block_idx]:
+                        print(f"{Fore.CYAN}[{self.peer_id}] Requesting block {block_idx} from peer {pid}{Style.RESET_ALL}")
                         self.request_block_from_peer(pid, block_idx)
+
                         if self.blocks_owned[block_idx]:
                             block_downloaded = True
-                            break
+                            break  # Conseguiu o bloco, vai esperar o próximo ciclo
+
                 if block_downloaded:
-                    break
+                    break  # Já baixou pelo menos um bloco, aguarda o próximo ciclo
+
+            # Se não conseguiu baixar de nenhum peer, tenta o tracker
+            if not block_downloaded:
+                for block_idx in rarest_blocks:
+                    # Verifica se NENHUM peer tem esse bloco
+                    no_peer_has = all(
+                        not blocks[block_idx]
+                        for pid, blocks in self.peer_blocks.items()
+                        if pid != "tracker"
+                    )
+
+                    if no_peer_has and not self.blocks_owned[block_idx]:
+                        print(f"{Fore.MAGENTA}[{self.peer_id}] Nobody has block {block_idx}. Requesting from Tracker.{Style.RESET_ALL}")
+                        self.request_block_from_peer("tracker", block_idx)
+                        break  # Pede um bloco por ciclo para evitar flood
 
             time.sleep(3)
 
         self.file_complete = True
-        print(f"{Fore.GREEN}[{self.peer_id}] Download complete! Reconstructing file...{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}[{self.peer_id}] Download completo! Reconstruindo arquivo...{Style.RESET_ALL}")
         self.reconstruct_file()
 
         while True:

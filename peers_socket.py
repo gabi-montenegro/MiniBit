@@ -146,6 +146,8 @@ class PeerSocket:
 
         self.unchoked_peers = fixed_peers.union(optimistic_peer)
 
+        self.unchoked_peers.discard("tracker")
+
         print(f"{Fore.YELLOW}[{self.peer_id}] Unchoked peers (fixos + otimista): {self.unchoked_peers}{Style.RESET_ALL}")
 
     def request_block_from_peer(self, target_pid, block_idx):
@@ -183,10 +185,6 @@ class PeerSocket:
             }
             self.send_message(ip, port, msg)
 
-
-    # def announce_all_blocks(self):
-    #     for block_idx in range(TOTAL_FILE_BLOCKS):
-    #         self.announce_block(block_idx)
 
     def reconstruct_file(self):
         output_file = f"output_{self.peer_id}.txt"
