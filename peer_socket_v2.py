@@ -257,11 +257,25 @@ class PeerSocket:
         except Exception as e:
             print(f"{Fore.RED}[{self.peer_id}] Error contacting tracker: {e}{Style.RESET_ALL}")
 
+    def log_block_progress(self):
+        total = TOTAL_FILE_BLOCKS
+        owned = sum(1 for b in self.blocks_owned if b)
+        percent = (owned / total) * 100
+
+        filled = int(percent / 2)  # 50 blocos → barra de 50 caracteres
+        bar = f"[{'#' * filled}{'.' * (50 - filled)}]"
+
+        print(f"{Fore.BLUE}[{self.peer_id}] Progresso: {owned}/{total} blocos ({percent:.2f}%) {bar}{Style.RESET_ALL}")
+
+
+    def log_detailed_blocks(self):
+        status = ''.join(['█' if b else '.' for b in self.blocks_owned])
+        print(f"{Fore.YELLOW}[{self.peer_id}] Blocos: {status}{Style.RESET_ALL}")
+
     def run(self):
         last_unchoke_time = 0
 
         while not all(self.blocks_owned):
-            print(f"{Fore.MAGENTA}[{self.peer_id}] Blocos atuais: {self.blocks_owned}{Style.RESET_ALL}")
 
             self.update_peers_from_tracker()
             self.send_blocks_info()
@@ -304,6 +318,8 @@ class PeerSocket:
                         self.request_block_from_peer("tracker", block_idx)
                         break  # Pede um bloco por ciclo para evitar flood
 
+            self.log_block_progress()
+            self.log_detailed_blocks()
             time.sleep(3)
 
         self.file_complete = True
