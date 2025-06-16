@@ -18,24 +18,24 @@ Implementação de um sistema de compartilhamento cooperativo de arquivos com es
 
 - Python (versão 3.8 ou superior)
 
-### Passo a Passo (via )
+### Passo a Passo
 
 1. Abra um terminal e execute o Tracker:
 
 ```bash
-python tracker_socket.py
+python tracker.py
 ```
 
 2. Abra outro terminal e execute o Peer. Você precisará fornecer um `peer_id` e uma `listen_port`:
 
 ```bash
-python peer_socket_v2.py <peer_id> <listen_port>
+python peer.py <peer_id> <listen_port>
 ```
 
 **Exemplo:**
 
 ```bash
-python peer_socket_v2.py peer1 50001
+python peer.py peer1 5001
 ```
 
 ---
