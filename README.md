@@ -5,8 +5,11 @@ Implementação de um sistema de compartilhamento cooperativo de arquivos com es
 
 ## Estrutura Inicial
 
-- `tracker_socket.py`
-- `peer_socket_v2.py`
+- `tracker.py`
+- `peers.py`
+- `file.txt`
+- `run_all_linux.sh`
+- `run_all_windows.bat`
 
 ## Como rodar
 
@@ -14,7 +17,7 @@ Implementação de um sistema de compartilhamento cooperativo de arquivos com es
 
 - Python (versão 3.8 ou superior)
 
-### Passo a Passo
+### Passo a Passo (via )
 
 1. Abra um terminal e execute o Tracker:
 
