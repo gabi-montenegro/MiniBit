@@ -13,7 +13,7 @@ echo -e "\033]0;BitTorrent Test Environment Launcher\007"
 echo -e "${BLUE}=======================================================${NC}"
 echo -e "${BLUE}    Iniciando Ambiente de Teste BitTorrent (Linux)${NC}"
 echo -e "${BLUE}=======================================================${NC}"
-echo.
+
 
 # --- Configurações ---
 # Host e porta do Tracker
@@ -23,7 +23,7 @@ TRACKER_PORT=9000
 # Porta inicial para os Peers
 INITIAL_PEER_PORT=5001
 # Número de Peers a iniciar
-NUM_PEERS=3
+NUM_PEERS=5
 
 # Nome do arquivo a ser compartilhado pelo Tracker (deve existir no mesmo diretório)
 FILE_TO_SHARE="file.txt"
@@ -42,23 +42,23 @@ start_new_terminal_command() {
 
 # =======================================================
 
-echo.
+
 echo -e "${YELLOW}Verificando se o arquivo \"${FILE_TO_SHARE}\" existe...${NC}"
 if [ ! -f "${FILE_TO_SHARE}" ]; then
-    echo.
+    
     echo -e "${RED}ERRO: O arquivo \"${FILE_TO_SHARE}\" não foi encontrado no diretório atual.${NC}"
     echo -e "${YELLOW}Crie este arquivo antes de iniciar o Tracker e os Peers.${NC}"
-    echo.
+    
     echo -e "${YELLOW}Exemplo de como criar um arquivo vazio para teste (1KB):${NC}"
     echo -e "${YELLOW}dd if=/dev/zero of=${FILE_TO_SHARE} bs=1K count=1${NC}"
-    echo.
+    
     read -p "Pressione Enter para sair."
     exit 1
 else
     echo -e "${GREEN}Arquivo \"${FILE_TO_SHARE}\" encontrado.${NC}"
 fi
 
-echo.
+
 echo -e "${YELLOW}Iniciando o Tracker (em nova janela)...${NC}"
 start_new_terminal_command "Tracker" "python3 tracker.py" &
 
@@ -66,9 +66,9 @@ start_new_terminal_command "Tracker" "python3 tracker.py" &
 echo -e "${YELLOW}Esperando 2 segundos para o Tracker iniciar...${NC}"
 sleep 2
 
-echo.
+
 echo -e "${YELLOW}Iniciando os Peers (cada um em sua própria janela)...${NC}"
-echo.
+
 
 # Loop para iniciar cada Peer
 for (( i=1; i<=NUM_PEERS; i++ )); do
@@ -82,10 +82,10 @@ for (( i=1; i<=NUM_PEERS; i++ )); do
     sleep 0.5
 done
 
-echo.
+
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}    Ambiente BitTorrent Iniciado!${NC}"
 echo -e "${GREEN}    Verifique as janelas separadas para o Tracker e os Peers.${NC}"
 echo -e "${GREEN}=======================================================${NC}"
-echo.
+
 read -p "Pressione Enter para fechar este terminal de controle."
