@@ -7,7 +7,7 @@ import base64
 
 init(autoreset=True)
 
-TOTAL_FILE_BLOCKS = 20
+TOTAL_FILE_BLOCKS = 25
 
 class TrackerSocketServer:
     def __init__(self, host='127.0.0.1', port=9000):
@@ -86,6 +86,8 @@ class TrackerSocketServer:
         initial_blocks_count = 2
         initial_blocks = random.sample(range(TOTAL_FILE_BLOCKS), initial_blocks_count)
 
+        initial_blocks_data = {idx: self.block_data[idx] for idx in initial_blocks}
+
         self.connected_peers[peer_id] = {
             'ip': addr[0],
             'port': listen_port
@@ -103,6 +105,7 @@ class TrackerSocketServer:
         return {
             "status": "success",
             "initial_blocks": initial_blocks,
+            "initial_blocks_data": initial_blocks_data,
             "peers": response_peers
         }
 

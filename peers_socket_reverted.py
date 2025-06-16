@@ -7,7 +7,7 @@ from colorama import Fore, Style
 import base64
 TRACKER_HOST = '127.0.0.1'
 TRACKER_PORT = 9000
-TOTAL_FILE_BLOCKS = 20 
+TOTAL_FILE_BLOCKS = 25 
 
 class PeerSocket:
     def __init__(self, peer_id, listen_port):
@@ -93,7 +93,7 @@ class PeerSocket:
             print(f"{Fore.GREEN}[{self.peer_id}] Registrado. Blocos iniciais (do tracker): {resp['initial_blocks']}{Style.RESET_ALL}")
             for idx in resp['initial_blocks']: 
                 self.blocks_owned[idx] = True
-                self.block_data[idx] = f"Block {idx} data"
+                self.block_data[idx] = resp['initial_blocks_data'][str(idx)]
 
         
             for peer in resp['peers']:
@@ -120,7 +120,7 @@ class PeerSocket:
 
 
     def get_peer_id_by_address(self, ip, port):
-        for pid, (peer_ip, peer_port) in self.known_peers.items():
+        for pid, (peer_ip, peer_port) in list(self.known_peers.items()):
             if peer_ip == ip and peer_port == port:
                 return pid
         return None
@@ -277,7 +277,7 @@ class PeerSocket:
             print(f"{Fore.RED}[{self.peer_id}] Erro de conexão ao tracker: {e}{Style.RESET_ALL}")
 
     def announce_block(self, block_idx):
-        for pid, (ip, port) in self.known_peers.items():
+        for pid, (ip, port) in list(self.known_peers.items()):
             msg = {
                 "action": "announce_block",
                 "sender_id": self.peer_id,
@@ -287,16 +287,14 @@ class PeerSocket:
 
     def reconstruct_file(self):
         output_file = f"output_{self.peer_id}.txt"
-        with open(output_file, 'w') as f: 
+        with open(output_file, 'w') as f:
             for i in range(TOTAL_FILE_BLOCKS):
                 content = self.block_data.get(i)
                 if content is None:
                     print(f"[{self.peer_id}] WARNING: Bloco {i} faltante para reconstrução.")
-                    f.write(b'[MISSING BLOCK]\n') 
+                    f.write('[MISSING BLOCK]\n')
                 else:
                     f.write(content)
-
-        print(f"{Fore.GREEN}[{self.peer_id}] Arquivo salvo: {output_file}{Style.RESET_ALL}")
 
     def update_peers_from_tracker(self):
         try:
@@ -317,7 +315,7 @@ class PeerSocket:
                         continue
 
                     
-                    if pid not in self.known_peers:
+                    if pid not in list(self.known_peers):
                         self.known_peers[pid] = (peer['ip'], peer['port'])
                         print(f"{Fore.CYAN}[{self.peer_id}] Novo peer descoberto: {pid}{Style.RESET_ALL}")
                         self.request_peer_blocks_info(pid)
