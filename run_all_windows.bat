@@ -1,4 +1,6 @@
 @echo off
+setlocal enabledelayedexpansion
+
 REM Define o título da janela principal do script
 title BitTorrent Test Environment Launcher
 
@@ -18,7 +20,7 @@ set TRACKER_PORT=9000
 REM Porta inicial para os Peers
 set INITIAL_PEER_PORT=5001
 REM Número de Peers a iniciar
-set NUM_PEERS=3
+set NUM_PEERS=5
 
 REM Nome do arquivo a ser compartilhado pelo Tracker (deve existir no mesmo diretorio)
 set FILE_TO_SHARE=file.txt
@@ -26,27 +28,31 @@ set FILE_TO_SHARE=file.txt
 REM =======================================================
 
 echo.
+echo.
 echo Verificando se o arquivo "%FILE_TO_SHARE%" existe...
 if not exist "%FILE_TO_SHARE%" (
-    echo.
-    echo ERRO: O arquivo "%FILE_TO_SHARE%" nao foi encontrado no diretorio atual.
-    echo Crie este arquivo antes de iniciar o Tracker e os Peers.
-    echo.
-    echo Exemplo de como criar um arquivo vazio para teste (1KB):
-    echo fsutil file createnew %FILE_TO_SHARE% 1024
-    echo.
-    pause
-    exit /b 1
-) else (
-    echo Arquivo "%FILE_TO_SHARE%" encontrado.
+    goto FILE_NOT_FOUND
 )
+
+echo Arquivo "%FILE_TO_SHARE%" encontrado.
+goto CONTINUE
+
+:FILE_NOT_FOUND
+echo.
+echo ERRO: O arquivo "%FILE_TO_SHARE%" nao foi encontrado no diretorio atual.
+echo Crie este arquivo antes de iniciar o Tracker e os Peers.
+echo.
+echo Exemplo de como criar um arquivo vazio para teste (1KB):
+echo fsutil file createnew %FILE_TO_SHARE% 1024
+echo.
+pause
+exit /b 1
+
+:CONTINUE
+
 
 echo.
 echo Iniciando o Tracker (em nova janela)...
-REM O comando 'start' abre um novo prompt de comando.
-REM '/b' executa o comando na mesma janela (nao serve aqui, seria 'start "" cmd /k')
-REM 'title "Tracker"' define o titulo da nova janela.
-REM 'cmd /k' executa o comando e mantem a janela aberta apos o comando terminar.
 start "Tracker" cmd /k python tracker.py
 
 REM Espera alguns segundos para o Tracker inicializar completamente
@@ -61,11 +67,10 @@ REM Loop para iniciar cada Peer
 for /l %%i in (1,1,%NUM_PEERS%) do (
     set /a CURRENT_PORT=!INITIAL_PEER_PORT! + %%i - 1
     set PEER_ID=peer%%i
-    
+
     echo Iniciando !PEER_ID! na porta !CURRENT_PORT!...
     start "Peer !PEER_ID!" cmd /k python peer.py !PEER_ID! !CURRENT_PORT!
-    
-    REM Pequena pausa entre o inicio de cada peer para evitar sobrecarga ou problemas de inicializacao
+
     timeout /t 1 /nobreak > nul
 )
 
