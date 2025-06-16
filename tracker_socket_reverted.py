@@ -7,7 +7,7 @@ import base64
 
 init(autoreset=True)
 
-TOTAL_FILE_BLOCKS = 50
+TOTAL_FILE_BLOCKS = 20
 
 class TrackerSocketServer:
     def __init__(self, host='127.0.0.1', port=9000):
@@ -61,12 +61,8 @@ class TrackerSocketServer:
                     response = self.register_peer(request, addr)
                 elif action == "get_peers":
                     response = self.get_peers(request)
-                elif action == "request_block":
+                elif action == "request_block_tracker":
                     response = self.handle_block_request(request)
-                # elif action == "have_blocks_info":
-                #     response = self.receive_have_blocks_info(request)
-                # elif action == "announce_block":
-                #     response = self.receive_announce_block(request)
                 elif action == "peer_offline":
                     response = self.handle_peer_offline(request)
                 else:

@@ -7,7 +7,7 @@ from colorama import Fore, Style
 import base64
 TRACKER_HOST = '127.0.0.1'
 TRACKER_PORT = 9000
-TOTAL_FILE_BLOCKS = 50 # Este deve ser atualizado pelo tracker quando ele carrega o arquivo
+TOTAL_FILE_BLOCKS = 20 
 
 class PeerSocket:
     def __init__(self, peer_id, listen_port):
@@ -16,7 +16,7 @@ class PeerSocket:
         self.blocks_owned = [False] * TOTAL_FILE_BLOCKS
         self.block_data = {}
         self.known_peers = {}  # {peer_id: (ip, port)}
-        self.peer_blocks = {}  # {peer_id: [bool, bool, ...]} - Isso será preenchido por requisições diretas aos peers
+        self.peer_blocks = {}  # {peer_id: [bool, bool, ...]} 
         self.unchoked_peers = set()
         self.file_complete = False
 
@@ -43,10 +43,8 @@ class PeerSocket:
             if action == "request_block":
                 self.handle_block_request(conn, msg)
             elif action == "have_blocks_info":
-                # Este é o novo endpoint para peers pedirem a informação de blocos uns aos outros
                 self.handle_have_blocks_info_request(conn, msg)
             elif action == "announce_block":
-                # Announce_block ainda é útil para peers atualizarem uns aos outros
                 if sender in self.peer_blocks and 0 <= msg['block_index'] < TOTAL_FILE_BLOCKS:
                     self.peer_blocks[sender][msg['block_index']] = True
                     print(f"{Fore.CYAN}[{self.peer_id}] Peer {sender} announced block {msg['block_index']}{Style.RESET_ALL}")
@@ -91,25 +89,19 @@ class PeerSocket:
 
             global TOTAL_FILE_BLOCKS
             print(f"{Fore.GREEN}[{self.peer_id}] Registered. Initial blocks (from tracker): {resp['initial_blocks']}{Style.RESET_ALL}")
-            for idx in resp['initial_blocks']: # Se o tracker ainda passa alguns blocos, ele os terá
+            for idx in resp['initial_blocks']: 
                 self.blocks_owned[idx] = True
                 self.block_data[idx] = f"Block {idx} data"
 
-            # O tracker agora envia informações mais simples dos peers
+        
             for peer in resp['peers']:
                 pid = peer['peer_id']
-                if pid == self.peer_id: # Evita adicionar a si mesmo
+                if pid == self.peer_id: 
                     continue
 
                 self.known_peers[pid] = (peer['ip'], peer['port'])
-                if pid == 'tracker': # O tracker ainda pode ter todos os blocos
-                    self.peer_blocks[pid] = [True] * TOTAL_FILE_BLOCKS
-                else:
-                    self.peer_blocks[pid] = [False] * TOTAL_FILE_BLOCKS # Inicializa para peers reais, será preenchido
+                self.peer_blocks[pid] = [False] * TOTAL_FILE_BLOCKS 
 
-    # REMOVIDO: send_blocks_info não vai mais para o tracker
-    # def send_blocks_info(self):
-    #    pass
 
     def notify_tracker_peer_offline(self, dead_peer_id):
         try:
@@ -121,7 +113,7 @@ class PeerSocket:
                     "sender_id": self.peer_id
                 }
                 s.sendall(json.dumps(msg).encode())
-        except Exception: # Captura exceção mais genérica para logging
+        except Exception: 
             print(f"[{self.peer_id}] Falha ao notificar o tracker sobre o peer morto: {dead_peer_id}")
 
 
@@ -136,12 +128,12 @@ class PeerSocket:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((ip, port))
                 s.sendall(json.dumps(msg).encode())
-                # Se for uma requisição de blocos (have_blocks_info), espera a resposta
+                
                 if msg.get("action") == "have_blocks_info":
                     data = s.recv(4096)
                     resp = json.loads(data.decode())
-                    return resp # Retorna a resposta para quem chamou
-                return {"status": "success"} # Para outras mensagens que não esperam resposta de conteúdo
+                    return resp 
+                return {"status": "success"} 
         except ConnectionRefusedError as e:
             target_peer_id = self.get_peer_id_by_address(ip, port)
             if target_peer_id:
@@ -156,7 +148,7 @@ class PeerSocket:
             print(f"[{self.peer_id}] Erro ao enviar mensagem para {ip}:{port}: {e}")
             return {"status": "error", "reason": str(e)}
 
-    # NOVA FUNÇÃO: Solicitar a lista de blocos de um peer específico
+    
     def request_peer_blocks_info(self, target_pid):
         if target_pid not in self.known_peers:
             return False
@@ -164,10 +156,10 @@ class PeerSocket:
         ip, port = self.known_peers[target_pid]
         msg = {
             "action": "have_blocks_info",
-            "sender_id": self.peer_id # Quem está pedindo
+            "sender_id": self.peer_id 
         }
         print(f"{Fore.CYAN}[{self.peer_id}] Requesting blocks info from {target_pid}{Style.RESET_ALL}")
-        response = self.send_message(ip, port, msg) # send_message agora retorna a resposta
+        response = self.send_message(ip, port, msg) 
 
         if response and response.get("status") == "success":
             self.peer_blocks[target_pid] = response['blocks_info']
@@ -183,9 +175,9 @@ class PeerSocket:
 
         for idx in range(TOTAL_FILE_BLOCKS):
             if not self.blocks_owned[idx]:
-                # Conta quantos peers (que já tiveram seus blocos consultados) têm esse bloco
+                
                 count = sum(
-                    1 for blocks_list in self.peer_blocks.values() # Itera sobre as listas de blocos conhecidas
+                    1 for blocks_list in self.peer_blocks.values() 
                     if idx < len(blocks_list) and blocks_list[idx]
                 )
 
@@ -200,15 +192,12 @@ class PeerSocket:
         rarity_count = {}
         rarest_blocks = self.get_rarest_blocks()
 
-        # Agora, 'peer_blocks' pode conter 'tracker' e outros peers.
-        # 'tracker' é uma fonte de todos os blocos, mas não é um peer para "choke/unchoke" normal.
-        # Desconsideramos o 'tracker' da lógica de tit-for-tat e choking.
+        
         peers_for_tit_for_tat = [pid for pid in self.peer_blocks if pid != 'tracker']
 
-        # Somente considera peers que já temos informações de blocos.
-        # É crucial que request_peer_blocks_info seja chamado antes.
+        
         for pid in peers_for_tit_for_tat:
-            if pid in self.peer_blocks: # Certifica-se de que temos a lista de blocos para este peer
+            if pid in self.peer_blocks:
                 count = sum(1 for block_idx in rarest_blocks if self.peer_blocks[pid][block_idx])
                 rarity_count[pid] = count
 
@@ -233,11 +222,7 @@ class PeerSocket:
         print(f"{Fore.YELLOW}[{self.peer_id}] Unchoked peers: {self.unchoked_peers}{Style.RESET_ALL}")
 
     def request_block_from_peer(self, target_pid, block_idx):
-        # Agora o tracker é tratado como um peer especial que SEMPRE tem blocos.
-        # E ele não está sujeito a "choke".
-        if target_pid == 'tracker':
-            ip, port = TRACKER_HOST, TRACKER_PORT
-        elif target_pid in self.known_peers:
+        if target_pid in self.known_peers:
             ip, port = self.known_peers[target_pid]
         else:
             print(f"{Fore.RED}[{self.peer_id}] Target peer {target_pid} not in known_peers.{Style.RESET_ALL}")
@@ -257,7 +242,6 @@ class PeerSocket:
 
                 if resp["status"] == "success":
                     self.blocks_owned[block_idx] = True
-                    # Decode block_data from string back to bytes
                     self.block_data[block_idx] = resp["block_data"]
                     print(f"{Fore.GREEN}[{self.peer_id}] Received block {block_idx} from {target_pid}{Style.RESET_ALL}")
                     self.announce_block(block_idx)
@@ -266,29 +250,47 @@ class PeerSocket:
         except Exception as e:
             print(f"{Fore.RED}[{self.peer_id}] Connection error to {target_pid}: {e}{Style.RESET_ALL}")
 
+
+    def request_block_from_tracker(self, block_idx):
+        msg = {
+            "action": "request_block_tracker",
+            "sender_id": self.peer_id,
+            "block_index": block_idx
+        }
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((TRACKER_HOST, TRACKER_PORT))
+                s.sendall(json.dumps(msg).encode())
+                data = s.recv(4096)
+                resp = json.loads(data.decode())
+
+                if resp["status"] == "success":
+                    self.blocks_owned[block_idx] = True
+                    self.block_data[block_idx] = resp["block_data"]
+                    print(f"{Fore.GREEN}[{self.peer_id}] Received block {block_idx} from tracker{Style.RESET_ALL}")
+                    self.announce_block(block_idx)
+                else:
+                    print(f"{Fore.RED}[{self.peer_id}] Failed to get block {block_idx} from tracker: {resp.get('reason')}{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.RED}[{self.peer_id}] Connection error to tracker: {e}{Style.RESET_ALL}")
+
     def announce_block(self, block_idx):
-        # Agora, o announce_block é para avisar os outros peers diretamente
-        # (e o tracker, se ele ainda precisar saber para algum propósito, mas a premissa é que não).
-        # Para simplificar, vamos enviar para todos os known_peers (exceto o tracker para esta função, se ele não precisar saber).
-        # Neste novo modelo, o tracker não precisa ser avisado de cada bloco.
         for pid, (ip, port) in self.known_peers.items():
-            if pid != 'tracker': # Não anuncia blocos para o tracker nesta lógica
-                msg = {
-                    "action": "announce_block",
-                    "sender_id": self.peer_id,
-                    "block_index": block_idx
-                }
-                self.send_message(ip, port, msg)
+            msg = {
+                "action": "announce_block",
+                "sender_id": self.peer_id,
+                "block_index": block_idx
+            }
+            self.send_message(ip, port, msg)
 
     def reconstruct_file(self):
         output_file = f"output_{self.peer_id}.txt"
-        with open(output_file, 'wb') as f: # Abrir em modo binário 'wb' para dados de bloco
+        with open(output_file, 'w') as f: 
             for i in range(TOTAL_FILE_BLOCKS):
                 content = self.block_data.get(i)
                 if content is None:
                     print(f"[{self.peer_id}] WARNING: Missing block {i} for reconstruction.")
-                    # Pode preencher com bytes vazios ou levantar um erro
-                    f.write(b'[MISSING BLOCK]\n') # Escreve um placeholder binário
+                    f.write(b'[MISSING BLOCK]\n') 
                 else:
                     f.write(content)
 
@@ -312,23 +314,11 @@ class PeerSocket:
                     if pid == self.peer_id:
                         continue
 
-                    # Novo peer descoberto
+                    
                     if pid not in self.known_peers:
                         self.known_peers[pid] = (peer['ip'], peer['port'])
                         print(f"{Fore.CYAN}[{self.peer_id}] Discovered new peer {pid}{Style.RESET_ALL}")
-                        
-                        # SOLICITAR BLOCOS DO NOVO PEER
-                        # Se for o tracker, já temos a info de blocos dele
-                        if pid == 'tracker':
-                            # O tracker envia blocks_info para si mesmo na resposta do get_peers
-                            self.peer_blocks[pid] = peer.get('blocks_info', [True] * TOTAL_FILE_BLOCKS)
-                            print(f"{Fore.CYAN}[{self.peer_id}] Received initial blocks info from tracker.{Style.RESET_ALL}")
-                        else:
-                            # Para outros peers, solicitar a informação de blocos diretamente
-                            self.request_peer_blocks_info(pid)
-                    # Peer já conhecido, mas talvez precisamos atualizar a lista de blocos dele
-                    # ou re-solicitar se estiver desatualizada (aqui, vamos manter a simples,
-                    # apenas solicitando na descoberta ou periodicamente no loop principal se necessário)
+                        self.request_peer_blocks_info(pid)
 
         except Exception as e:
             print(f"{Fore.RED}[{self.peer_id}] Error contacting tracker: {e}{Style.RESET_ALL}")
@@ -349,24 +339,21 @@ class PeerSocket:
 
     def run(self):
         last_unchoke_time = 0
-        last_peer_info_update = 0 # Novo contador para atualizar informações de blocos dos peers
+        last_peer_info_update = 0 
 
         while not all(self.blocks_owned):
 
             self.update_peers_from_tracker()
-            # REMOVIDO: send_blocks_info() - Não envia mais para o tracker
 
             now = time.time()
             if now - last_unchoke_time >= 10:
                 self.tit_for_tat()
                 last_unchoke_time = now
 
-            # Nova lógica: Atualiza informações de blocos de peers a cada X segundos
-            # Isso é importante porque peers estão sempre adquirindo novos blocos
-            if now - last_peer_info_update >= 15: # Exemplo: a cada 15 segundos
-                for pid in list(self.known_peers.keys()): # Itera sobre uma cópia, pois pode remover peers
-                    if pid != 'tracker': # Não pede ao tracker, pois ele já se auto-anuncia via get_peers
-                        self.request_peer_blocks_info(pid)
+            
+            if now - last_peer_info_update >= 15: 
+                for pid in list(self.known_peers.keys()):
+                    self.request_peer_blocks_info(pid)
                 last_peer_info_update = now
 
 
@@ -374,9 +361,8 @@ class PeerSocket:
 
             block_downloaded = False
 
-            # Tenta pegar de peers unchoked primeiro
             for block_idx in rarest_blocks:
-                for pid in list(self.unchoked_peers): # Itera sobre uma cópia caso o peer saia da lista
+                for pid in list(self.unchoked_peers): 
                     if pid in self.peer_blocks and self.peer_blocks[pid][block_idx]:
                         print(f"{Fore.CYAN}[{self.peer_id}] Requesting block {block_idx} from peer {pid}{Style.RESET_ALL}")
                         self.request_block_from_peer(pid, block_idx)
@@ -388,17 +374,16 @@ class PeerSocket:
                 if block_downloaded:
                     break
 
-            # Se não conseguiu baixar de nenhum peer, tenta o tracker (que é uma fonte primária)
+            # Se não conseguiu baixar de nenhum peer, tenta o tracker 
             if not block_downloaded:
                 for block_idx in rarest_blocks:
                     no_peer_has = all(
                         not blocks[block_idx]
                         for pid, blocks in self.peer_blocks.items()
-                        if pid != "tracker"
                     )
                     if no_peer_has and not self.blocks_owned[block_idx]:
                         print(f"{Fore.MAGENTA}[{self.peer_id}] Nobody has block {block_idx}. Requesting from Tracker.{Style.RESET_ALL}")
-                        request_block_from_tracker(self, block_idx)
+                        self.request_block_from_tracker(block_idx)
                         break
 
 
