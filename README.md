@@ -3,13 +3,14 @@
 
 Implementação de um sistema de compartilhamento cooperativo de arquivos com estratégias distribuídas.
 
-## Estrutura Inicial
+## Estrutura
 
 - `tracker.py`
 - `peers.py`
 - `file.txt`
 - `run_all_linux.sh`
 - `run_all_windows.bat`
+- `logs/`
 
 ## Como rodar
 
