@@ -5,6 +5,8 @@ import random
 import time
 from colorama import Fore, Style
 import base64
+
+
 TRACKER_HOST = '127.0.0.1'
 TRACKER_PORT = 9000
 TOTAL_FILE_BLOCKS = 25 
@@ -186,7 +188,7 @@ class PeerSocket:
                 # Se ninguém tem, usa um valor alto (9999)
                 rarity[idx] = count if count > 0 else 9999
 
-        # Retorna os blocos ordenados do mais raro para o mais comum
+        
         return sorted(rarity, key=lambda k: rarity[k])
 
 
@@ -401,7 +403,7 @@ class PeerSocket:
             self.log_block_progress()
             self.log_detailed_blocks()
             time.sleep(3)
-
+            
         self.file_complete = True
         print(f"{Fore.GREEN}[{self.peer_id}] Download completo! Reconstruindo arquivo...{Style.RESET_ALL}")
         self.reconstruct_file()
