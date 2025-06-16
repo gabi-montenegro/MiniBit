@@ -36,6 +36,8 @@ python peer_socket_v2.py peer1 50001
 
 ---
 
+3. (Opcional) É possível iniciar o Tracker e vários Peers automaticamente executando os scrips: `run_all_windows.bat`(Windows) ou `run_all_linux.sh`(Linux/macOS). Acesse a área de configuração dos scripts para definir os parâmetros de execução.
+
 ## Tracker
 
 O Tracker é implementado como um servidor de socket TCP em `tracker_socket.py`, encapsulado na classe `TrackerSocketServer`. Ele coordena o registro e a consulta de peers, bem como a manipulação de requisições de blocos e informações de posse de blocos entre peers.
