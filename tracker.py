@@ -8,7 +8,7 @@ import sys
 import os
 
 
-TOTAL_FILE_BLOCKS = 25
+TOTAL_FILE_BLOCKS = 100
 
 class TrackerSocketServer:
     def __init__(self, host='127.0.0.1', port=9000):
