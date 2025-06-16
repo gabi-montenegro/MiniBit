@@ -10,7 +10,7 @@ import os
 
 TRACKER_HOST = '127.0.0.1'
 TRACKER_PORT = 9000
-TOTAL_FILE_BLOCKS = 25
+TOTAL_FILE_BLOCKS = 100
 
 class PeerSocket:
     def __init__(self, peer_id, listen_port):
