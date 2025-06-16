@@ -43,12 +43,7 @@ python peer_socket_v2.py peer1 50001
 
 ## Tracker
 
-O Tracker é implementado como um servidor de socket TCP em `tracker_socket.py`, encapsulado na classe `TrackerSocketServer`. Ele coordena o registro e a consulta de peers, bem como a manipulação de requisições de blocos e informações de posse de blocos entre peers.
-
-### Lógica de envio de peers:
-
-- Se houver menos de 5 peers, o Tracker envia todos (exceto o solicitante).
-- O próprio Tracker é incluído como peer, sempre com todos os blocos.
+O Tracker é implementado como um servidor de socket TCP em `tracker_socket.py`, encapsulado na classe `TrackerSocketServer`. Ele coordena o registro e a consulta de peers, bem como a manipulação de requisições de blocos (somente quando nenhum peer tiver o bloco).
 
 ### Principais Atributos da Classe `TrackerSocketServer`
 
@@ -60,15 +55,15 @@ O Tracker é implementado como um servidor de socket TCP em `tracker_socket.py`,
 
 ### Métodos Principais
 
-- `__init__(self, host='127.0.0.1', port=9000)`: Inicializa o Tracker
-- `load_file_blocks(self, filename)`: Carrega o conteúdo do arquivo em blocos
-- `start(self)`: Inicia o servidor de socket
-- `handle_client(self, conn, addr)`: Processa requisições recebidas
-- `register_peer(self, data, addr)`: Registra um novo peer
-- `get_peers(self, data)`: Retorna a lista de peers conhecidos
-- `handle_block_request(self, data)`: Responde a requisições de blocos
-- `receive_have_blocks_info(self, data)`: Atualiza posse de blocos dos peers
-- `receive_announce_block(self, data)`: Processa anúncios de novos blocos por peers
+- `__init__(self, host='127.0.0.1', port=9000)`: Inicializa o Tracker e carrega os blocos do arquivo.
+- `load_file_blocks(self, filename)`: Carrega o conteúdo do arquivo em blocos e os armazena.
+- `start(self)`: Inicia o servidor de socket do Tracker e começa a escutar por conexões.
+- `handle_client(self, conn, addr)`: Processa as requisições recebidas de peers em uma nova thread.
+- `register_peer(self, data, addr)`: Registra um novo peer, atribui blocos iniciais aleatórios e retorna a lista de peers conhecidos.
+- `get_peers(self, data)`: Retorna uma lista de peers conhecidos para o peer solicitante (limitado a 5 peers aleatórios se houver mais).
+- `handle_block_request(self, data)`: Responde a requisições de blocos, enviando o bloco solicitado se disponível.
+- `handle_peer_offline(self, data)`: Remove um peer da lista de peers conectados quando ele é sinalizado como offline.
+
 
 ---
 
@@ -86,23 +81,33 @@ O Peer é implementado na classe `PeerSocket` dentro de `peer_socket_v2.py`. Atu
 - `self.peer_blocks`: Informações de posse de blocos por peer conhecido
 - `self.unchoked_peers`: Peers desbloqueados (unchoked)
 - `self.file_complete`: Indica se o peer já possui o arquivo completo
+- `self.is_running`: Booleano para controlar o estado de execução do peer
+
 
 ### Métodos Principais
 
-- `__init__(self, peer_id, listen_port)`: Inicializa o peer
-- `listen_for_peers(self)`: Inicia o servidor interno do peer
-- `handle_peer_request(self, conn, addr)`: Lida com requisições recebidas
-- `handle_block_request(self, conn, msg)`: Responde requisições de blocos
-- `register_with_tracker(self)`: Registra o peer no Tracker
-- `send_blocks_info(self)`: Envia informações de blocos para peers conhecidos
-- `send_message(self, ip, port, msg)`: Envia mensagens JSON via socket
-- `get_rarest_blocks(self)`: Identifica os blocos mais raros que o peer precisa
-- `tit_for_tat(self)`: Aplica a estratégia Tit-for-Tat para decidir peers desbloqueados
-- `request_block_from_peer(self, target_pid, block_idx)`: Solicita bloco específico a outro peer
-- `announce_block(self, block_idx)`: Anuncia a aquisição de um novo bloco
-- `reconstruct_file(self)`: Reconstrói o arquivo a partir dos blocos
-- `update_peers_from_tracker(self)`: Atualiza a lista de peers a partir do Tracker
-- `run(self)`: Loop principal de execução (download, compartilhamento e reconstrução do arquivo)
+- `__init__(self, peer_id, listen_port)`: Inicializa o peer com seu ID e porta de escuta.
+- `listen_for_peers(self)`: Inicia um servidor de socket no peer para escutar requisições de outros peers.
+- `handle_peer_request(self, conn, addr)`: Lida com as requisições recebidas de outros peers (e.g., solicitação de bloco, anúncio de blocos).
+- `handle_have_blocks_info_request(self, conn, msg)`: Responde a requisições de outros peers sobre os blocos que este peer possui.
+- `handle_block_request(self, conn, msg)`: Responde a requisições de blocos, enviando o bloco se possuído e o peer estiver "unchoked".
+- `register_with_tracker(self)`: Registra o peer no Tracker e recebe informações iniciais, incluindo blocos e peers conhecidos.
+- `notify_tracker_peer_offline(self, dead_peer_id)`: Notifica o tracker quando um peer é considerado offline.
+- `get_peer_id_by_address(self, ip, port)`: Retorna o ID de um peer a partir de seu endereço IP e porta.
+- `send_message(self, ip, port, msg)`: Envia mensagens JSON para outros peers via socket, tratando erros de conexão.
+- `request_peer_blocks_info(self, target_pid)`: Solicita informações de posse de blocos a um peer específico.
+- `get_rarest_blocks(self)`: Identifica e retorna uma lista dos blocos mais raros que o peer precisa.
+- `tit_for_tat(self)`: Implementa a estratégia Tit-for-Tat para selecionar peers para "deschoke".
+- `request_block_from_peer(self, target_pid, block_idx)`: Solicita um bloco específico a outro peer.
+- `request_block_from_tracker(self, block_idx)`: Solicita um bloco específico ao Tracker, caso não consiga obtê-lo de outros peers.
+- `announce_block(self, block_idx)`: Anuncia a aquisição de um novo bloco para os peers conhecidos.
+- `reconstruct_file(self)`: Reconstrói o arquivo completo a partir dos blocos baixados.
+- `update_peers_from_tracker(self)`: Atualiza a lista de peers conhecidos consultando o Tracker.
+- `log_block_progress(self)`: Exibe o progresso do download dos blocos em porcentagem e uma barra de progresso.
+- `log_detailed_blocks(self)`: Exibe uma representação visual dos blocos possuídos pelo peer.
+- `shutdown(self)`: Inicia o processo de desligamento controlado do peer, notificando o tracker.
+- `run(self)`: Loop principal de execução do peer, gerenciando o download, compartilhamento e reconstrução do arquivo.
+
 
 ---
 
